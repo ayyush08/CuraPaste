@@ -1,3 +1,10 @@
 spring:
   application:
     name: curapaste
+  datasource:
+    url: jdbc:postgresql://localhost:5432/pastebin
+    username: pastebin
+    password: pastebin
+  jpa:
+    hibernate:
+        ddl-auto: update

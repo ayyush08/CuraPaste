@@ -1,0 +1,34 @@
+  name: curapaste
+
+  services:
+    postgres:
+      image: postgres:16
+      container_name: curapaste-postgres
+      restart: unless-stopped
+
+      environment:
+        POSTGRES_DB: pastebin
+        POSTGRES_USER: pastebin
+        POSTGRES_PASSWORD: pastebin
+
+      ports:
+        - "5432:5432"
+
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+
+      networks:
+        - curapaste-network
+
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U pastebin -d pastebin"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+  volumes:
+    postgres_data:
+
+  networks:
+    curapaste-network:
+      driver: bridge

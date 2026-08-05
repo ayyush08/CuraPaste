@@ -19,7 +19,7 @@ public class Paste {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String content;
 
 
@@ -29,6 +29,13 @@ public class Paste {
 
     private Instant createdAt;
 
+
+
+    @Column(length = 512)
+    private String contentLocation;
+
+    @Column(nullable = false)
+    private Integer sizeBytes;
 
     @PrePersist
     void onCreate() {

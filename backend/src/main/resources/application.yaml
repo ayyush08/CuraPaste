@@ -8,3 +8,10 @@ spring:
   jpa:
     hibernate:
         ddl-auto: update
+storage:
+  endpoint: http://localhost:9000
+  access-key: minio
+  secret-key: minio123
+  bucket: curapaste-content
+  region: us-east-
+  inline-threshold-bytes:  50 # less for testing, (use 51200 (50kb) for prod)

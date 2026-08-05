@@ -22,6 +22,11 @@ public class Paste {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+
+    @Column(name = "short_id", nullable = false, unique = true, length = 12)
+    private String shortId;
+
+
     private Instant createdAt;
 
 

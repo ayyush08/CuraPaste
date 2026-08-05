@@ -28,7 +28,7 @@ public class PasteController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Paste> getPaste(@PathVariable Long id){
+    public ResponseEntity<Paste> getPaste(@PathVariable String id){
         return ResponseEntity.status(HttpStatus.FOUND).body(pasteService.getPaste(id));
     }
 }

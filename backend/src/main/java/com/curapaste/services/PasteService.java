@@ -21,14 +21,20 @@ public class PasteService {
     private final ContentStorageService contentStorageService;
     private final StorageProperties storageProperties;
 
+    private final CacheService cacheService;
+
     private final IdGeneratorService idGenerator;
 
-    public PasteService(PasteRepository repo, IdGeneratorService idGenerator, ContentStorageService contentStorageService,
-                        StorageProperties storageProperties) {
+    public PasteService(PasteRepository repo,
+                        IdGeneratorService idGenerator,
+                        ContentStorageService contentStorageService,
+                        StorageProperties storageProperties,
+                        CacheService cacheService) {
         this.pasteRepository = repo;
         this.idGenerator = idGenerator;
         this.contentStorageService = contentStorageService;
         this.storageProperties = storageProperties;
+        this.cacheService = cacheService;
     }
 
     public PasteResponse createPaste(CreatePasteRequest requestBody){
@@ -46,7 +52,11 @@ public class PasteService {
         }
 
         p = pasteRepository.save(p);
-        return toResponse(p);
+
+        PasteResponse pasteResponse = toResponse(p);
+
+        cacheService.set(pasteResponse);
+        return pasteResponse;
     }
 
     private String generateUniqueId(){
@@ -60,11 +70,20 @@ public class PasteService {
     }
 
     public PasteResponse getPaste(String shortId){
-        Paste p =  pasteRepository.findByShortId(shortId).orElseThrow(
-                ()-> new ResponseStatusException(HttpStatus.NOT_FOUND, "Paste not found!")
-        );
 
-        return toResponse(p);
+
+        return cacheService.get(shortId).orElseGet(()->{
+            System.out.println("Cache MISS -> Loading from database");
+            Paste p =  pasteRepository.findByShortId(shortId).orElseThrow(
+                    ()-> new ResponseStatusException(HttpStatus.NOT_FOUND, "Paste not found!")
+            );
+
+            PasteResponse pasteResponse = toResponse(p);
+
+            cacheService.set(pasteResponse);
+
+            return pasteResponse;
+        });
     }
 
     private PasteResponse toResponse(Paste p){

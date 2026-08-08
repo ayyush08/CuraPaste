@@ -37,6 +37,22 @@ public class Paste {
     @Column(nullable = false)
     private Integer sizeBytes;
 
+
+    @Column(name = "expires_at")
+    private Instant expiresAt;
+
+    @Column(name = "burn_after_read", nullable = false)
+    private boolean burnAfterRead;
+
+    @Column(name = "password_hash", length = 255)
+    private String passwordHash;
+
+    @Column(name = "delete_token_hash", nullable = false, length = 255)
+    private String deleteTokenHash;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     @PrePersist
     void onCreate() {
         createdAt = Instant.now();

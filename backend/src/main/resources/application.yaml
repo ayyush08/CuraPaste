@@ -7,15 +7,24 @@ spring:
     password: pastebin
   jpa:
     hibernate:
-        ddl-auto: update
+        ddl-auto: validate
   data:
     redis:
       host: localhost
       port: 6379
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 4
 storage:
   endpoint: http://localhost:9000
   access-key: minio
   secret-key: minio123
   bucket: curapaste-content
-  region: us-east-
+  region: us-east-1
   inline-threshold-bytes:  50 # less for testing, (use 51200 (50kb) for prod)
+
+
+cleanup:
+  expiry:
+    interval-ms: 300000 # (5min) -  15seconds(1500) for testing locally could be good
+    batch-size: 500

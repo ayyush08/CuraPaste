@@ -2,6 +2,8 @@ package com.curapaste.controllers;
 
 
 import com.curapaste.dto.CreatePasteRequest;
+import com.curapaste.dto.CreatePasteResponse;
+import com.curapaste.dto.DeletePasteRequest;
 import com.curapaste.dto.PasteResponse;
 import com.curapaste.entities.Paste;
 import com.curapaste.services.PasteService;
@@ -24,16 +26,30 @@ public class PasteController {
     }
 
     @PostMapping
-    public ResponseEntity<PasteResponse> create(@Valid  @RequestBody CreatePasteRequest requestBody){
+    public ResponseEntity<CreatePasteResponse> create(@Valid @RequestBody CreatePasteRequest requestBody) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 pasteService.createPaste(requestBody)
         );
     }
 
     @GetMapping("/{shortId}")
-    public ResponseEntity<PasteResponse> getPaste(@PathVariable String shortId) {
+    public ResponseEntity<PasteResponse> getPaste(@PathVariable String shortId,
+                                                  @RequestParam(required = false) String password) {
         return ResponseEntity.ok(
-                pasteService.getPaste(shortId)
+                pasteService.getPaste(shortId,password)
+        );
+    }
+
+    @DeleteMapping("/{shortId}")
+    public ResponseEntity<Map<String,String>> deletePaste(@PathVariable String shortId
+    , @Valid @RequestBody DeletePasteRequest request) {
+        pasteService.deletePaste(
+                shortId,
+                request.getDeleteToken()
+        );
+
+        return ResponseEntity.status(HttpStatus.OK).body(
+                Map.of("message", "Paste has been deleted successfully")
         );
     }
 }

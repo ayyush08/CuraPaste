@@ -15,4 +15,10 @@ import lombok.Setter;
 public class CreatePasteRequest {
     @NotBlank(message = "Content cannot be empty")
     private String content;
+
+    private Long expiresInSeconds;
+
+    private boolean burnAfterRead = false;
+
+    private String password;
 }

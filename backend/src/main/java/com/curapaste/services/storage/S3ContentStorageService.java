@@ -1,7 +1,7 @@
 package com.curapaste.services.storage;
 
 
-import com.curapaste.config.StorageProperties;
+import com.curapaste.config.storage.StorageProperties;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;

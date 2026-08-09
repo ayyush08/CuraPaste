@@ -1,4 +1,4 @@
-package com.curapaste.config;
+package com.curapaste.config.storage;
 
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

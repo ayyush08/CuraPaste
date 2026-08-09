@@ -2,7 +2,7 @@ package com.curapaste.services;
 
 
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
+
 
 import java.security.SecureRandom;
 

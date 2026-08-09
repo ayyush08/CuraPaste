@@ -98,6 +98,15 @@
         interval: 10s
         timeout: 5s
         retries: 5
+    rabbitmq:
+      image: rabbitmq:3-management-alpine
+      container_name: curapaste-rabbitmq
+      ports:
+        - "5672:5672"
+        - "15672:15672"
+      environment:
+        RABBITMQ_DEFAULT_USER: curapaste
+        RABBITMQ_DEFAULT_PASS: curapaste
 
   volumes:
     postgres_data:

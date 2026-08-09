@@ -1,12 +1,13 @@
 package com.curapaste.services;
 
 
-import com.curapaste.config.StorageProperties;
+import com.curapaste.config.storage.StorageProperties;
 import com.curapaste.dto.CachedPaste;
 import com.curapaste.dto.CreatePasteRequest;
 import com.curapaste.dto.CreatePasteResponse;
 import com.curapaste.dto.PasteResponse;
 import com.curapaste.entities.Paste;
+import com.curapaste.events.PasteEventPublisher;
 import com.curapaste.repository.PasteRepository;
 import com.curapaste.services.storage.ContentStorageService;
 import org.springframework.http.HttpStatus;
@@ -32,18 +33,22 @@ public class PasteService {
 
     private final PasswordEncoder encoder;
 
+    private final PasteEventPublisher eventPublisher;
+
     public PasteService(PasteRepository repo,
                         IdGeneratorService idGenerator,
                         ContentStorageService contentStorageService,
                         StorageProperties storageProperties,
                         CacheService cacheService,
-                        PasswordEncoder passwordEncoder) {
+                        PasswordEncoder passwordEncoder,
+                        PasteEventPublisher eventPublisher) {
         this.pasteRepository = repo;
         this.idGenerator = idGenerator;
         this.contentStorageService = contentStorageService;
         this.storageProperties = storageProperties;
         this.cacheService = cacheService;
         this.encoder = passwordEncoder;
+        this.eventPublisher = eventPublisher;
     }
 
     public CreatePasteResponse createPaste(CreatePasteRequest requestBody){
@@ -81,6 +86,9 @@ public class PasteService {
 
         CachedPaste cached = toCachedPaste(p);
         cacheService.set(cached);
+
+        eventPublisher.publish(p.getShortId());
+
         return new CreatePasteResponse(
                 p.getShortId(),
                 cached.getContent(),

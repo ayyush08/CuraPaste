@@ -3,6 +3,7 @@ package com.curapaste.services;
 
 import com.curapaste.dto.CachedPaste;
 import com.curapaste.dto.PasteResponse;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
@@ -36,19 +37,29 @@ public class CacheService {
        }
     }
 
+    @CircuitBreaker(
+            name = "redisCache",
+            fallbackMethod = "getFallback"
+    )
     public Optional<CachedPaste> get(String shortId){
-        try {
             String json = redisTemplate.opsForValue().get(cacheKey(shortId));
             return json == null
                     ? Optional.empty()
                     : Optional.of(fromJson(json));
-        } catch (Exception e) {
-//            log.warn("Redis unavailable", e);
-            System.out.println("CACHE GET ERROR: "+e);
-            return Optional.empty();
-        }
+
     }
 
+    private Optional<CachedPaste> getFallback(
+            String shortId,
+            Throwable t) {
+
+        System.out.println(
+                "Redis circuit open, bypassing cache: "
+                        + t.getMessage()
+        );
+
+        return Optional.empty();
+    }
 
     public void evict(String shortId){
         try {

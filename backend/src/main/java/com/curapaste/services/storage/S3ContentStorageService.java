@@ -2,7 +2,11 @@ package com.curapaste.services.storage;
 
 
 import com.curapaste.config.storage.StorageProperties;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -26,6 +30,10 @@ public class S3ContentStorageService implements ContentStorageService{
     }
 
     @Override
+    @CircuitBreaker(
+            name = "objectStorage",
+            fallbackMethod = "storeFallback"
+    )
     public String store(String shortId,String content) {
         String key = buildKey(shortId);
 
@@ -41,6 +49,22 @@ public class S3ContentStorageService implements ContentStorageService{
         return key;
     }
 
+    private String storeFallback(
+            String shortId,
+            String content,
+            Throwable t) {
+
+        System.out.println(
+                "Object storage unavailable while storing paste: "
+                        + t.getMessage()
+        );
+
+        throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Content storage is temporarily unavailable. Please try again later."
+        );
+    }
+
     @Override
     public String fetch(String location) {
        return s3Client.getObjectAsBytes(
@@ -52,6 +76,11 @@ public class S3ContentStorageService implements ContentStorageService{
     }
 
     @Override
+    @CircuitBreaker(
+            name = "objectStorage",
+            fallbackMethod = "fetchFallback"
+    )
+    @Retry(name = "objectStorage")
     public void delete(String location) {
 
         s3Client.deleteObject(
@@ -61,6 +90,22 @@ public class S3ContentStorageService implements ContentStorageService{
                         .build()
         );
     }
+
+    private String fetchFallback(
+            String location,
+            Throwable t) {
+
+        System.out.println(
+                "Object storage unavailable: "
+                        + t.getMessage()
+        );
+
+        throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Storage temporarily unavailable"
+        );
+    }
+
     private String buildKey(String shortId) {
 
         LocalDate today = LocalDate.now();

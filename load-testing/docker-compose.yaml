@@ -1,0 +1,8 @@
+name: curapaste-load-testing
+
+services:
+  k6:
+    image: grafana/k6:latest
+    container_name: curapaste-k6
+    volumes:
+      - ./test.js:/scripts/test.js:ro

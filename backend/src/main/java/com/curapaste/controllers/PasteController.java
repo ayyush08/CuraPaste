@@ -1,10 +1,7 @@
 package com.curapaste.controllers;
 
 
-import com.curapaste.dto.CreatePasteRequest;
-import com.curapaste.dto.CreatePasteResponse;
-import com.curapaste.dto.DeletePasteRequest;
-import com.curapaste.dto.PasteResponse;
+import com.curapaste.dto.*;
 import com.curapaste.entities.Paste;
 import com.curapaste.services.PasteService;
 import jakarta.validation.Valid;
@@ -37,6 +34,13 @@ public class PasteController {
                                                   @RequestParam(required = false) String password) {
         return ResponseEntity.ok(
                 pasteService.getPaste(shortId,password)
+        );
+    }
+
+    @GetMapping("{shortId}/metadata")
+    public ResponseEntity<PasteMetadataResponse> getPasteMetadata(@PathVariable String shortId) {
+        return ResponseEntity.ok(
+                pasteService.getPasteMetadata(shortId)
         );
     }
 

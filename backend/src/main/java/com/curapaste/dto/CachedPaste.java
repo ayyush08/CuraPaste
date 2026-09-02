@@ -16,7 +16,7 @@ public class CachedPaste {
     private String shortId;
     private String content;
     private Instant createdAt;
-
+    private Integer sizeBytes;
     private Instant expiresAt;
     private boolean burnAfterRead;
     private String passwordHash;

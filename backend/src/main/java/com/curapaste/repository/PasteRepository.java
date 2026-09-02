@@ -23,6 +23,10 @@ public interface PasteRepository extends JpaRepository<Paste,Long> {
             FROM Paste p
             WHERE p.shortId = :shortId
               AND p.deletedAt IS NULL
+               AND (
+                            p.expiresAt IS NULL
+                            OR p.expiresAt > CURRENT_TIMESTAMP
+                        )
             """)
     Optional<Paste> findAliveByShortId(
             @Param("shortId") String shortId
@@ -64,5 +68,21 @@ public interface PasteRepository extends JpaRepository<Paste,Long> {
     List<Paste> findExpiredBatch(
             @Param("now") Instant now,
             Pageable pageable
+    );
+
+
+    @Transactional
+    @Modifying
+    @Query("""
+        UPDATE Paste p
+        SET p.viewCount = :viewCount,
+            p.lastViewedAt = :viewedAt
+        WHERE p.shortId = :shortId
+          AND p.deletedAt IS NULL
+        """)
+    int updateAnalytics(
+            @Param("shortId") String shortId,
+            @Param("viewedAt") Instant viewedAt,
+            @Param("viewCount") long viewCount
     );
 }

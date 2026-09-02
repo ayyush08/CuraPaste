@@ -53,6 +53,13 @@ public class Paste {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+
+    @Column(name = "view_count", nullable = false)
+    private Long viewCount = 0L;
+
+    @Column(name = "last_viewed_at")
+    private Instant lastViewedAt;
+
     @PrePersist
     void onCreate() {
         createdAt = Instant.now();

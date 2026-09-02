@@ -2,12 +2,8 @@ package com.curapaste.services;
 
 
 import com.curapaste.config.storage.StorageProperties;
-import com.curapaste.dto.CachedPaste;
-import com.curapaste.dto.CreatePasteRequest;
-import com.curapaste.dto.CreatePasteResponse;
-import com.curapaste.dto.PasteResponse;
+import com.curapaste.dto.*;
 import com.curapaste.entities.Paste;
-import com.curapaste.events.PasteEventPublisher;
 import com.curapaste.repository.PasteRepository;
 import com.curapaste.services.storage.ContentStorageService;
 import org.springframework.http.HttpStatus;
@@ -33,22 +29,18 @@ public class PasteService {
 
     private final PasswordEncoder encoder;
 
-    private final PasteEventPublisher eventPublisher;
-
     public PasteService(PasteRepository repo,
                         IdGeneratorService idGenerator,
                         ContentStorageService contentStorageService,
                         StorageProperties storageProperties,
                         CacheService cacheService,
-                        PasswordEncoder passwordEncoder,
-                        PasteEventPublisher eventPublisher) {
+                        PasswordEncoder passwordEncoder) {
         this.pasteRepository = repo;
         this.idGenerator = idGenerator;
         this.contentStorageService = contentStorageService;
         this.storageProperties = storageProperties;
         this.cacheService = cacheService;
         this.encoder = passwordEncoder;
-        this.eventPublisher = eventPublisher;
     }
 
     public CreatePasteResponse createPaste(CreatePasteRequest requestBody){
@@ -87,7 +79,6 @@ public class PasteService {
         CachedPaste cached = toCachedPaste(p);
         cacheService.set(cached);
 
-        eventPublisher.publish(p.getShortId());
 
         return new CreatePasteResponse(
                 p.getShortId(),
@@ -108,18 +99,7 @@ public class PasteService {
     }
 
     public PasteResponse getPaste(String shortId,String password){
-        CachedPaste cached = cacheService.get(shortId)
-                .orElseGet(() -> {
-
-                    System.out.println("CACHE MISS -> Loading from database");
-
-                    Paste paste = findAliveOrThrow(shortId);
-
-                    CachedPaste cachedPaste = toCachedPaste(paste);
-                    cacheService.set(cachedPaste);
-                    return cachedPaste;
-                });
-
+        CachedPaste cached = getCachedPasteOrThrow(shortId);
         //Expired
         if (cached.getExpiresAt() != null
                 && cached.getExpiresAt().isBefore(Instant.now())) {
@@ -159,6 +139,7 @@ public class PasteService {
             }
 
             cacheService.evict(shortId);
+            cacheService.recordView(shortId,cached.getExpiresAt());
 
             return new PasteResponse(
                     cached.getShortId(),
@@ -166,6 +147,8 @@ public class PasteService {
                     cached.getCreatedAt()
             );
         }
+
+        cacheService.recordView(shortId,cached.getExpiresAt());
 
         return new PasteResponse(
                 cached.getShortId(),
@@ -193,7 +176,47 @@ public class PasteService {
 
     }
 
+    public PasteMetadataResponse getPasteMetadata(String shortId){
+        CachedPaste cached = getCachedPasteOrThrow(shortId);
 
+        if (cached.getExpiresAt() != null
+                && cached.getExpiresAt().isBefore(Instant.now())) {
+
+            cacheService.evict(shortId);
+
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Paste is expired"
+            );
+        }
+
+        return new PasteMetadataResponse(
+                cached.getShortId(),
+                cached.getCreatedAt(),
+                cached.getExpiresAt(),
+                cached.isBurnAfterRead(),
+                cached.getSizeBytes(),
+                cacheService.getViewCount(shortId),
+                cacheService.getLastViewedAt(shortId)
+        );
+    }
+
+    private CachedPaste getCachedPasteOrThrow(String shortId) {
+
+        return cacheService.get(shortId)
+                .orElseGet(() -> {
+
+                    System.out.println("CACHE MISS -> Loading from database");
+
+                    Paste paste = findAliveOrThrow(shortId);
+
+                    CachedPaste cachedPaste = toCachedPaste(paste);
+
+                    cacheService.set(cachedPaste);
+
+                    return cachedPaste;
+                });
+    }
     private Paste findAliveOrThrow(String shortId) {
 
         return pasteRepository.findAliveByShortId(shortId)
@@ -222,6 +245,7 @@ public class PasteService {
                 p.getShortId(),
                 content,
                 p.getCreatedAt(),
+                p.getSizeBytes(),
                 p.getExpiresAt(),
                 p.isBurnAfterRead(),
                 p.getPasswordHash()

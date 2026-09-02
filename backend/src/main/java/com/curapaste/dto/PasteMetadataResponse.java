@@ -1,4 +1,4 @@
-package com.curapaste.events;
+package com.curapaste.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -12,8 +12,12 @@ import java.time.Instant;
 @NoArgsConstructor
 @Getter
 @Setter
-public class PasteEvent {
+public class PasteMetadataResponse {
     String shortId;
-    String eventType;
-    Instant timestamp;
+    Instant createdAt;
+    Instant expiresAt;
+    boolean burnAfterRead;
+    Integer sizeBytes;
+    long viewCount;
+    Instant lastViewedAt;
 }

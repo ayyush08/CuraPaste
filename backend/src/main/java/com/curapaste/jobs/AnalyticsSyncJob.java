@@ -3,9 +3,9 @@ package com.curapaste.jobs;
 
 import com.curapaste.repository.PasteRepository;
 import com.curapaste.services.CacheService;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
 import java.time.Instant;
 import java.util.Set;
 
@@ -20,6 +20,10 @@ public class AnalyticsSyncJob {
     }
 
     @Scheduled(fixedRateString = "${analytics-sync.expiry.interval-ms}")
+    @SchedulerLock(
+            name = "analyticsSync",
+            lockAtMostFor = "1m"
+    )
     public void syncAnalytics(){
         System.out.println("SYNCING ANALYTICS FROM CACHE TO DB");
 

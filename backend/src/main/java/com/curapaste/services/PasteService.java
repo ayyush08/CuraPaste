@@ -43,49 +43,94 @@ public class PasteService {
         this.encoder = passwordEncoder;
     }
 
-    public CreatePasteResponse createPaste(CreatePasteRequest requestBody){
+    public CreatePasteResponse createPaste(CreatePasteRequest requestBody) {
+
         String content = requestBody.getContent();
+
         Paste p = new Paste();
         p.setShortId(generateUniqueId());
+
         int size = content.getBytes(StandardCharsets.UTF_8).length;
         p.setSizeBytes(size);
 
-        if(size > storageProperties.getInlineThresholdBytes()){
-            p.setContentLocation(contentStorageService.store(p.getShortId(),content));
-        }
-        else{
-            p.setContent(content);
-        }
+        String contentLocation = null;
 
-        p.setExpiresAt(requestBody.getExpiresInSeconds() != null
-                ? Instant.now().plusSeconds(requestBody.getExpiresInSeconds()) : null);
+        try {
+            // Store content either in MinIO or directly in PostgreSQL
+            if (size > storageProperties.getInlineThresholdBytes()) {
 
-        p.setBurnAfterRead(requestBody.isBurnAfterRead());
+                contentLocation = contentStorageService.store(
+                        p.getShortId(),
+                        content
+                );
 
+                p.setContentLocation(contentLocation);
 
-        if(requestBody.getPassword()!=null && !requestBody.getPassword().isBlank()){
-            p.setPasswordHash(
-                    encoder.encode(requestBody.getPassword())
+            } else {
+                p.setContent(content);
+            }
+
+            p.setExpiresAt(
+                    requestBody.getExpiresInSeconds() != null
+                            ? Instant.now().plusSeconds(
+                            requestBody.getExpiresInSeconds()
+                    )
+                            : null
             );
 
+            p.setBurnAfterRead(requestBody.isBurnAfterRead());
+
+            if (requestBody.getPassword() != null
+                    && !requestBody.getPassword().isBlank()) {
+
+                p.setPasswordHash(
+                        encoder.encode(requestBody.getPassword())
+                );
+            }
+
+            String rawDeleteToken =
+                    UUID.randomUUID()
+                            .toString()
+                            .replace("-", "");
+
+            p.setDeleteTokenHash(
+                    encoder.encode(rawDeleteToken)
+            );
+
+            // PostgreSQL write
+            p = pasteRepository.save(p);
+
+            CachedPaste cached = toCachedPaste(p);
+            cacheService.set(cached);
+
+            return new CreatePasteResponse(
+                    p.getShortId(),
+                    cached.getContent(),
+                    p.getCreatedAt(),
+                    rawDeleteToken
+            );
+
+        } catch (Exception e) {
+
+            // PostgreSQL failed after MinIO successfully stored
+            // the content → compensate by deleting the object.
+            if (contentLocation != null) {
+                try {
+                    contentStorageService.delete(contentLocation);
+
+                } catch (Exception cleanupException) {
+
+                    System.err.println(
+                            "Failed to cleanup orphaned object: "
+                                    + contentLocation
+                    );
+
+                    cleanupException.printStackTrace();
+                }
+            }
+
+            throw e;
         }
-
-        String rawDeleteToken = UUID.randomUUID().toString().replace("-","");
-
-        p.setDeleteTokenHash(encoder.encode(rawDeleteToken));
-        p = pasteRepository.save(p);
-
-
-        CachedPaste cached = toCachedPaste(p);
-        cacheService.set(cached);
-
-
-        return new CreatePasteResponse(
-                p.getShortId(),
-                cached.getContent(),
-                p.getCreatedAt(),
-                rawDeleteToken
-        );
     }
 
     private String generateUniqueId(){
@@ -139,6 +184,10 @@ public class PasteService {
             }
 
             cacheService.evict(shortId);
+
+            if(cached.getContentLocation() != null){
+                contentStorageService.delete(cached.getContentLocation());
+            }
             cacheService.recordView(shortId,cached.getExpiresAt());
 
             return new PasteResponse(
@@ -174,6 +223,8 @@ public class PasteService {
 
 
 
+
+
     }
 
     public PasteMetadataResponse getPasteMetadata(String shortId){
@@ -190,14 +241,24 @@ public class PasteService {
             );
         }
 
+        long viewCount = cacheService.getViewCount(shortId);
+        Instant lastViewedAt = cacheService.getLastViewedAt(shortId);
+
+        // Fallback to PostgreSQL snapshot
+        if (viewCount == 0 && lastViewedAt == null) {
+            Paste paste = findAliveOrThrow(shortId);
+            viewCount = paste.getViewCount();
+            lastViewedAt = paste.getLastViewedAt();
+        }
+
         return new PasteMetadataResponse(
                 cached.getShortId(),
                 cached.getCreatedAt(),
                 cached.getExpiresAt(),
                 cached.isBurnAfterRead(),
                 cached.getSizeBytes(),
-                cacheService.getViewCount(shortId),
-                cacheService.getLastViewedAt(shortId)
+                viewCount,
+                lastViewedAt
         );
     }
 
@@ -248,7 +309,8 @@ public class PasteService {
                 p.getSizeBytes(),
                 p.getExpiresAt(),
                 p.isBurnAfterRead(),
-                p.getPasswordHash()
+                p.getPasswordHash(),
+                p.getContentLocation()
         );
     }
 }

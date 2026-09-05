@@ -45,7 +45,12 @@
 			implementation 'com.bucket4j:bucket4j_jdk17-redis-common:8.17.0'
 			implementation 'com.bucket4j:bucket4j_jdk17-lettuce:8.17.0'
 
+			implementation 'net.javacrumbs.shedlock:shedlock-spring:7.8.0'
+			implementation 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template:7.8.0'
+
 			runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
+
 
 			compileOnly 'org.projectlombok:lombok'
 			annotationProcessor 'org.projectlombok:lombok'

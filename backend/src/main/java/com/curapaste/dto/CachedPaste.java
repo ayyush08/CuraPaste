@@ -20,5 +20,6 @@ public class CachedPaste {
     private Instant expiresAt;
     private boolean burnAfterRead;
     private String passwordHash;
+    private String contentLocation;
 
 }
